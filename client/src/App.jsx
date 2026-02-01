@@ -15,6 +15,7 @@ export default function App() {
   const [pbiError, setPbiError] = useState("");
   const [pbiAccessToken, setPbiAccessToken] = useState("");
   const reportContainerRef = useRef(null);
+  const pbiAuthAttemptedRef = useRef(false);
 
   const msalInstance = useMemo(() => {
     const clientId = import.meta.env.VITE_AAD_CLIENT_ID;
@@ -124,6 +125,8 @@ export default function App() {
   const logout = () => {
     setUser(null);
     setToken("");
+    setPbiAccessToken("");
+    pbiAuthAttemptedRef.current = false;
   };
 
   const connectPowerBi = async () => {
@@ -172,9 +175,17 @@ export default function App() {
     }
   };
 
-  const disconnectPowerBi = () => {
-    setPbiAccessToken("");
-  };
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    if (!msalInstance || pbiAccessToken || pbiAuthAttemptedRef.current) {
+      return;
+    }
+
+    pbiAuthAttemptedRef.current = true;
+    connectPowerBi();
+  }, [connectPowerBi, msalInstance, pbiAccessToken, user]);
 
   if (!user) {
     return (
@@ -212,15 +223,6 @@ export default function App() {
           <h1>{user.company_name || "Reportes"}</h1>
         </div>
         <div className="user-info">
-          <div className="pbi-auth">
-            <button
-              className="ghost"
-              type="button"
-              onClick={pbiAccessToken ? disconnectPowerBi : connectPowerBi}
-            >
-              {pbiAccessToken ? "Desconectar Power BI" : "Conectar Power BI"}
-            </button>
-          </div>
           <span>{user.name}</span>
           <button className="ghost" type="button" onClick={logout}>
             Cerrar sesion
@@ -267,7 +269,16 @@ export default function App() {
           </div>
           {!pbiAccessToken ? (
             <div className="viewer-placeholder">
-              Conecta Power BI para ver los reportes.
+              {pbiError ? (
+                <div className="pbi-retry">
+                  <p>{pbiError}</p>
+                  <button type="button" onClick={connectPowerBi}>
+                    Reintentar conexion
+                  </button>
+                </div>
+              ) : (
+                "Conectando Power BI..."
+              )}
             </div>
           ) : selectedReport ? (
             <div ref={reportContainerRef} className="report-frame" />
@@ -276,7 +287,6 @@ export default function App() {
               Selecciona un reporte para verlo.
             </div>
           )}
-          {pbiError ? <p className="error">{pbiError}</p> : null}
         </section>
       </main>
     </div>
