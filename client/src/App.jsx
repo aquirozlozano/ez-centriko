@@ -77,10 +77,18 @@ export default function App() {
       return;
     }
 
-    msalInstance.initialize().catch((error) => {
-      console.error(error);
-      setPbiError("No se pudo inicializar Power BI.");
-    });
+    msalInstance
+      .initialize()
+      .then(() => msalInstance.handleRedirectPromise())
+      .then((response) => {
+        if (response?.accessToken) {
+          setPbiAccessToken(response.accessToken);
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+        setPbiError("No se pudo inicializar Power BI.");
+      });
   }, [msalInstance]);
 
   useEffect(() => {
@@ -150,11 +158,10 @@ export default function App() {
 
     try {
       setPbiError("");
-      const loginResponse = await msalInstance.loginPopup({ scopes });
-      const account = loginResponse.account;
+      const loginResponse = await msalInstance.loginRedirect({ scopes });
+      const account = loginResponse?.account;
 
       if (!account) {
-        setPbiError("No se pudo obtener la cuenta de Power BI.");
         return;
       }
 
@@ -165,11 +172,19 @@ export default function App() {
       setPbiAccessToken(tokenResponse.accessToken);
     } catch (error) {
       console.error(error);
+      const accounts = msalInstance.getAllAccounts();
+      if (!accounts.length) {
+        return;
+      }
+
       try {
-        const tokenResponse = await msalInstance.acquireTokenPopup({ scopes });
+        const tokenResponse = await msalInstance.acquireTokenSilent({
+          scopes,
+          account: accounts[0]
+        });
         setPbiAccessToken(tokenResponse.accessToken);
-      } catch (popupError) {
-        console.error(popupError);
+      } catch (redirectError) {
+        console.error(redirectError);
         setPbiError("No se pudo autenticar con Power BI.");
       }
     }
