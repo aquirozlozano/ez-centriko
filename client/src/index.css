@@ -188,6 +188,21 @@ button:disabled {
 
 .panel-header {
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.panel-actions button {
+  padding: 8px 12px;
+  font-size: 0.85rem;
 }
 
 .report-list {

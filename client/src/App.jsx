@@ -13,6 +13,7 @@ export default function App() {
   const [embedError, setEmbedError] = useState("");
   const [embedConfig, setEmbedConfig] = useState(null);
   const reportContainerRef = useRef(null);
+  const embeddedReportRef = useRef(null);
 
   const powerbiService = useMemo(() => {
     return new powerbi.service.Service(
@@ -57,6 +58,7 @@ export default function App() {
 
     if (!selectedReport || !embedConfig) {
       powerbiService.reset(reportContainerRef.current);
+      embeddedReportRef.current = null;
       return;
     }
 
@@ -74,7 +76,10 @@ export default function App() {
       }
     };
 
-    powerbiService.embed(reportContainerRef.current, config);
+    embeddedReportRef.current = powerbiService.embed(
+      reportContainerRef.current,
+      config
+    );
   }, [embedConfig, powerbiService, selectedReport]);
 
   const logout = () => {
@@ -82,6 +87,39 @@ export default function App() {
     setToken("");
     setEmbedConfig(null);
     setEmbedError("");
+  };
+
+  const handleFullscreen = () => {
+    embeddedReportRef.current?.fullscreen?.();
+  };
+
+  const handleDownload = () => {
+    embeddedReportRef.current?.print?.();
+  };
+
+  const handleShare = async () => {
+    if (!embedConfig?.embedUrl) {
+      return;
+    }
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: selectedReport?.name || "Reporte",
+          url: embedConfig.embedUrl
+        });
+        return;
+      } catch {
+        // ignore and fallback to clipboard
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(embedConfig.embedUrl);
+      window.alert("Enlace copiado.");
+    } catch {
+      window.alert("No se pudo copiar el enlace.");
+    }
   };
 
   useEffect(() => {
@@ -179,6 +217,32 @@ export default function App() {
         <section className="viewer">
           <div className="panel-header">
             <h2>Vista previa</h2>
+            <div className="panel-actions">
+              <button
+                type="button"
+                className="ghost"
+                onClick={handleFullscreen}
+                disabled={!embeddedReportRef.current}
+              >
+                Pantalla completa
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                onClick={handleDownload}
+                disabled={!embeddedReportRef.current}
+              >
+                Descargar
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                onClick={handleShare}
+                disabled={!embedConfig?.embedUrl}
+              >
+                Compartir
+              </button>
+            </div>
           </div>
           {embedError ? (
             <div className="viewer-placeholder">
