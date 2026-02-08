@@ -3,10 +3,12 @@ import * as powerbi from "powerbi-client";
 import { models } from "powerbi-client";
 import {
   createOrchestration,
+  getHistory,
   getEmbedConfig,
   getOrchestrations,
   getReports,
   login,
+  logReportAccess,
   updateOrchestrationDetails,
   updateOrchestrationStatus,
   updateOrchestrationDestinations,
@@ -36,6 +38,9 @@ export default function App() {
   });
   const reportContainerRef = useRef(null);
   const embeddedReportRef = useRef(null);
+  const lastLoggedReportRef = useRef(null);
+  const [history, setHistory] = useState([]);
+  const [historyError, setHistoryError] = useState("");
 
   const isCronValid = (value) => {
     if (!value) return false;
@@ -95,6 +100,20 @@ export default function App() {
   }, [token]);
 
   useEffect(() => {
+    if (!token) {
+      setHistory([]);
+      return;
+    }
+
+    getHistory(token)
+      .then((data) => {
+        setHistory(data.history || []);
+        setHistoryError("");
+      })
+      .catch((error) => setHistoryError(error.message));
+  }, [token]);
+
+  useEffect(() => {
     if (!reportContainerRef.current) {
       return;
     }
@@ -127,7 +146,19 @@ export default function App() {
     embeddedReportRef.current = embedded;
     setReportReady(false);
     embedded.off("loaded");
-    embedded.on("loaded", () => setReportReady(true));
+    embedded.on("loaded", async () => {
+      setReportReady(true);
+      if (!selectedReport) return;
+      if (lastLoggedReportRef.current === selectedReport.id) return;
+      lastLoggedReportRef.current = selectedReport.id;
+      try {
+        await logReportAccess(token, selectedReport.id);
+        const data = await getHistory(token);
+        setHistory(data.history || []);
+      } catch (error) {
+        setHistoryError(error.message);
+      }
+    });
   }, [embedConfig, powerbiService, selectedReport]);
 
   const logout = () => {
@@ -679,9 +710,23 @@ export default function App() {
                 <span>Reporte</span>
                 <span>Acción</span>
               </div>
-              <div className="history-empty muted">
-                Aún no hay registros.
-              </div>
+              {history.length ? (
+                <div className="history-body">
+                  {history.map((item) => (
+                    <div key={item.id} className="history-row">
+                      <span>{new Date(item.accessed_at).toLocaleString()}</span>
+                      <span>{item.user_email}</span>
+                      <span>{item.report_name}</span>
+                      <span>Visualizó</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="history-empty muted">
+                  Aún no hay registros.
+                </div>
+              )}
+              {historyError ? <p className="error">{historyError}</p> : null}
             </div>
           </section>
         </main>

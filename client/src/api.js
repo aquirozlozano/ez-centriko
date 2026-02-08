@@ -1,12 +1,13 @@
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
 async function request(path, options = {}) {
+  const { headers: extraHeaders, ...rest } = options;
   const res = await fetch(`${API_BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {})
+      ...(extraHeaders || {})
     },
-    ...options
+    ...rest
   });
 
   if (!res.ok) {
@@ -53,11 +54,29 @@ export async function getOrchestrations(token) {
   });
 }
 
+export async function getHistory(token) {
+  return request("/api/history", {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+}
+
 export async function getEmbedConfig(token, reportId) {
   return request(`/api/powerbi/embed/${reportId}`, {
     headers: {
       Authorization: `Bearer ${token}`
     }
+  });
+}
+
+export async function logReportAccess(token, reportId) {
+  return request("/api/history", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ reportId })
   });
 }
 

@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth.js";
 import reportRoutes from "./routes/reports.js";
 import powerBiRoutes from "./routes/powerbi.js";
 import orchestrationRoutes from "./routes/orchestrations.js";
+import historyRoutes from "./routes/history.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -29,6 +30,10 @@ app.use(
   })
 );
 app.use(express.json());
+app.use("/api", (req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -38,6 +43,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/powerbi", powerBiRoutes);
 app.use("/api/orchestrations", orchestrationRoutes);
+app.use("/api/history", historyRoutes);
 
 app.use(express.static(path.join(__dirname, "..", "public")));
 app.get("*", (req, res) => {

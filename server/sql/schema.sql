@@ -38,6 +38,14 @@ CREATE TABLE IF NOT EXISTS orchestrations (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS report_access_logs (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE RESTRICT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  report_id INTEGER NOT NULL REFERENCES reports(id) ON DELETE RESTRICT,
+  accessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Datos de prueba (idempotentes)
 INSERT INTO companies (company_name)
 SELECT 'Centriko'
